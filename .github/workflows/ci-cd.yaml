@@ -2,9 +2,9 @@ name: CI-CD
 
 on:
   push:
-    branches: [ "main" ]      # deploy on main pushes
+    branches: [ "master" ]      # deploy on main pushes
   pull_request:
-    branches: [ "main" ]      # build/test on PRs
+    branches: [ "master" ]      # build/test on PRs
 
 env:
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/webapp
