@@ -30,12 +30,12 @@ jobs:
       - name: Docker login
         run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
 
-      # 3) Build image (tag with commit SHA and latest)
+     # 3) Build image (tag with commit SHA and latest)
       - name: Build image
         run: |
           GIT_SHA=${{ github.sha }}
-          docker build -t $IMAGE_NAME:latest -t $IMAGE_NAME:${GIT_SHA::12} ./form_project
-
+          docker build -f ./form_project/Dockerfile -t $IMAGE_NAME:latest -t $IMAGE_NAME:${GIT_SHA::12} ./form_project
+          
       # 4) Push image to Docker Hub
       - name: Push image
         run: |
