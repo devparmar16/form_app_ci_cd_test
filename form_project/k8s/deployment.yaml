@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webapp
+  namespace: web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: webapp
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: webapp
+    spec:
+      containers:
+        - name: webapp
+          image: DOCKER_USERNAME/WEBAPP_REPO:latest  # CI will retag with SHA too
+          ports:
+            - containerPort: 3000
+          readinessProbe:
+            httpGet: { path: "/", port: 3000 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: "/", port: 3000 }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+      imagePullSecrets:
+        - name: dockerhub-cred   # optional, only if Docker Hub repo is private
