@@ -1,0 +1,61 @@
+name: CI-CD
+
+on:
+  push:
+    branches: [ "main" ]      # deploy on main pushes
+  pull_request:
+    branches: [ "main" ]      # build/test on PRs
+
+env:
+  IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/webapp
+  K8S_NAMESPACE: web
+
+jobs:
+  build-test-push-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) Fetch code
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # (Optional) Install deps & run unit tests
+      # - name: Install & Test
+      #   run: |
+      #     cd app
+      #     npm ci
+      #     npm test
+
+      # 2) Log in to Docker Hub
+      - name: Docker login
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      # 3) Build image (tag with commit SHA and latest)
+      - name: Build image
+        run: |
+          GIT_SHA=${{ github.sha }}
+          docker build -t $IMAGE_NAME:latest -t $IMAGE_NAME:${GIT_SHA::12} .
+
+      # 4) Push image to Docker Hub
+      - name: Push image
+        run: |
+          GIT_SHA=${{ github.sha }}
+          docker push $IMAGE_NAME:latest
+          docker push $IMAGE_NAME:${GIT_SHA::12}
+
+      # 5) Configure kubectl
+      - name: Set up kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          printf "%s" "${{ secrets.KUBE_CONFIG }}" > ~/.kube/config
+
+      # 6) Update manifests to use the new image tag (immutable)
+      - name: Set image tag in Deployment
+        run: |
+          GIT_SHA=${{ github.sha }}
+          kubectl -n $K8S_NAMESPACE set image deployment/webapp webapp=$IMAGE_NAME:${GIT_SHA::12}
+
+      # 7) Rollout status (wait for success)
+      - name: Wait for rollout
+        run: |
+          kubectl -n $K8S_NAMESPACE rollout status deployment/webapp --timeout=120s
